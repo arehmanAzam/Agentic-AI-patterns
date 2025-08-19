@@ -1,0 +1,358 @@
+{
+  "name": "Passive Goal Creator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "chat",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "831a4be3-9663-4fd5-af62-16ca707a153d",
+      "name": "Chat Input",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -416,
+        -320
+      ],
+      "webhookId": "simple-chat"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process incoming chat message\nconst input = $input.first().json.body[0].body[0];\n\n// Validate input\nif (!input.message) {\n  throw new Error('Message is required');\n}\n\n// Structure the data\nreturn {\n  message: $input.first().json.body[0].body[0].message,\n  user_id: input.user_id || 'anonymous',\n  timestamp: new Date().toISOString(),\n  session_Id: input.session_id || Date.now().toString()\n};"
+      },
+      "id": "4b13df1c-38f5-405e-8e23-715a82fade65",
+      "name": "Input Processor",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        -320
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "5ec5817e-2852-41a3-81a4-d710a3118126",
+      "name": "Chat Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        -192
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gemma3:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        656,
+        -64
+      ],
+      "id": "c05fd280-8745-4240-abbd-22f4abe87f96",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "4PfR7egIAqVoRtAq",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.session_Id }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        528,
+        464
+      ],
+      "id": "791dc210-743d-48fa-ac6c-012d093ec0d8",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "options": {
+          "groupMessages": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryManager",
+      "typeVersion": 1.1,
+      "position": [
+        -208,
+        16
+      ],
+      "id": "f6ff19ad-2274-4e38-bcda-8ff16482abd2",
+      "name": "Chat Memory Manager"
+    },
+    {
+      "parameters": {
+        "model": "gemma3:latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        240,
+        272
+      ],
+      "id": "eceff1c7-3356-4d86-83d4-0ba7a006d1a6",
+      "name": "Ollama Chat Model1",
+      "credentials": {
+        "ollamaApi": {
+          "id": "4PfR7egIAqVoRtAq",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are the Passive Goal Creator — an AI agent whose job is to assess and clarify a person's goal.\n\nYou will be provided with:\n1. The current user message:\n   {{ $json.message.toJsonString() }}\n\n2. The past messages in the conversation:\n   {{ $json.messages.toJsonString() }}\n\nYour objectives:\n- Understand the overall intent of the user based on both the current and past messages.\n- Identify if the goal is ambiguous or underspecified.\n- Clarify the goal into a precise, actionable statement.\n- Provide a brief reasoning for your interpretation.\n\n\nFormat your output as:\n- Clarified Goal: 5-10 words.\n- Reasoning: 5-10 words\n\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        256,
+        48
+      ],
+      "id": "ebc04407-9f1d-40d2-a1dc-d72c97e8ca71",
+      "name": "Passive Goal Creator"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a compassionate and professional mental health therapist having a conversation with the user.\n\nYou will be provided with:\n1. The clarified goal, reasoning, and suggested next steps from a goal assessment:\n   {{ $json.output }}\n2. The current user message:\n   {{ $json.message }}\n\nYour objectives:\n- Understand the user's emotional state and situation based on the clarified goal and their current message.\n- Respond in a warm, empathetic, and non-judgmental manner.\n- Offer emotional support and guidance without giving medical diagnoses.\n- Gently reinforce the clarified goal and help the user feel understood.\n- Ask thoughtful, open-ended questions that encourage self-reflection.\n- Suggest healthy coping strategies or practical actions that align with the goal.\n\nYour response should:\n- Be supportive, empathetic, and conversational.\n- Show active listening and understanding.\n- Integrate the clarified goal naturally into your response without sounding robotic.\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        672,
+        -320
+      ],
+      "id": "75ce1943-ee71-4fff-ac97-7249f302ec0a",
+      "name": "Chat Model"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        96,
+        -144
+      ],
+      "id": "95337e11-33ce-4b44-91dc-90cffd2c7fb8",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        432,
+        -288
+      ],
+      "id": "e23c996c-f9f2-4f32-bafa-626cb6747f20",
+      "name": "Merge1"
+    }
+  ],
+  "pinData": {
+    "Chat Input": [
+      {
+        "json": {
+          "headers": {
+            "host": "localhost:5678",
+            "user-agent": "python-requests/2.32.4",
+            "accept-encoding": "gzip, deflate, br",
+            "accept": "*/*",
+            "connection": "keep-alive",
+            "content-type": "application/json",
+            "content-length": "327"
+          },
+          "params": {},
+          "query": {},
+          "body": [
+            {
+              "headers": {
+                "content-type": "application/json",
+                "user-agent": "GradioChat/1.0"
+              },
+              "params": {},
+              "query": {},
+              "body": [
+                {
+                  "message": "Hi",
+                  "user_id": "ac62ac32-d00f-4a6a-b8f6-155d88385fd7",
+                  "session_id": "31cb4a28-be7c-42e7-803a-e561a551ff8e"
+                }
+              ],
+              "webhookUrl": "http://localhost:5678/webhook/chat",
+              "executionMode": "production"
+            }
+          ],
+          "webhookUrl": "http://localhost:5678/webhook/chat",
+          "executionMode": "production"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Chat Input": {
+      "main": [
+        [
+          {
+            "node": "Input Processor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input Processor": {
+      "main": [
+        [
+          {
+            "node": "Chat Memory Manager",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Chat Model",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Chat Model",
+            "type": "ai_memory",
+            "index": 0
+          },
+          {
+            "node": "Chat Memory Manager",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Memory Manager": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Passive Goal Creator",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Passive Goal Creator": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat Model": {
+      "main": [
+        [
+          {
+            "node": "Chat Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Passive Goal Creator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Chat Model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "122f20ac-e2aa-4782-be72-1bb312ee765c",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "72d550dd72ec659d4a307e5fb73342e16dc20a07b5ee650a88a3536996e7afc4"
+  },
+  "id": "mWYt4HICxNBwr1LY",
+  "tags": []
+}
